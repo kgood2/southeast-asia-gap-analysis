@@ -123,10 +123,11 @@ distinct <- dplyr::distinct
 ################################################################################
 # Set working directory
 ################################################################################
-
-# use 0-set_working_directory.R script:
-# update to your path
-source("/Users/emily/Documents/GitHub/conservation-gap-analysis/spatial-analysis-workflow/0-set_working_directory.R")
+main_dir <- "/Volumes/GoogleDrive/Shared drives/Global Tree Conservation Program/4. GTCP_Projects/Gap Analyses/Conservation Gap Analysis - SOUTHEAST ASIA OAKS/R_Workflow"
+taxa_dir <- "target_taxa"
+gis_dir <- "gis_layers"
+exsitu_dir <- "exsitu_data"
+raw_exsitu <- "raw_exsitu_data"
 
 ################################################################################
 # Load functions
