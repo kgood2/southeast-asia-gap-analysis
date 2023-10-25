@@ -103,7 +103,7 @@
 ################################################################################
 
 # install measurements package if you don't have it yet
-install.packages('measurements')
+# install.packages('measurements')
 
 # load packages
 my.packages <- c('tidyverse','textclean','CoordinateCleaner','terra')
@@ -145,6 +145,8 @@ read.exsitu.csv <- function(path,submission_year){
   # for each file, make some edits...
   for(file in seq_along(file_dfs)){
     df <- file_dfs[[file]]
+    # replace strange characters in column names (arise from saving?)
+    names(df) <- gsub(x = names(df), pattern = "ï\\.\\.", replacement = "")
     # if there is no inst_short provided, add based on the file name
     if(length(df$inst_short) == 0){
       df$inst_short <- rep(mgsub(file_list[file],c(paste0(path,"/"),".csv"),""),nrow(df))
@@ -157,12 +159,10 @@ read.exsitu.csv <- function(path,submission_year){
     # remove extra blank columns that may be present
     t <- grepl("^X",names(df))
     if(length(unique(t))>1){ df <- df[, -grep("^X", names(df))] }
-    # replace strange characters in column names (arise from saving?)
-    names(df) <- gsub(x = names(df), pattern = "ï\\.\\.", replacement = "")
     # add accession number if there isn't one
     if("acc_num" %in% names(df) & nrow(df[which(is.na(df$acc_num)),]) > 0){
       df[which(is.na(df$acc_num)),]$acc_num <- paste0("added",
-                                                      sprintf("%04d", 1:nrow(df[which(is.na(df$acc_num)),])))
+          sprintf("%04d", 1:nrow(df[which(is.na(df$acc_num)),])))
     }  # if you have mis-named acc_num column(s) you need to address that...
     #} else if ("acc_no" %in% names(df) & nrow(df[which(is.na(df$acc_no)),]) > 0){
     #  df[which(is.na(df$acc_no)),]$acc_no <- paste0("added",
@@ -195,7 +195,7 @@ read.exsitu.csv <- function(path,submission_year){
 # number if one isn't given
 ### CHANGE BASED ON FOLDER(S) AND YEAR(S) YOU HAVE...
 all_data <- read.exsitu.csv(file.path(main_dir, exsitu_dir, raw_exsitu,
-                                      "exsitu_standard_column_names"), "2022")
+                                      "exsitu_standard_column_names"), "2023")
 # stack all data if you had multiple years:
 #to_stack <- list(raw_2022,raw_2021,raw_2020,raw_2019,raw_2018,raw_2017)
 #all_data <- Reduce(bind_rows, to_stack)
@@ -287,6 +287,14 @@ sort(unique(all_data$genus))
 not_all_na <- function(x) any(!is.na(x))
 all_data <- all_data %>% select(where(not_all_na))
 
+# add required taxon name columns if they are not present, since we use them
+#   later; the script will throw an error if they're not in the data
+if(length(all_data$hybrid) == 0){ all_data$hybrid <- "" }
+if(length(all_data$species) == 0){ all_data$species <- "" }
+if(length(all_data$infra_rank) == 0){ all_data$infra_rank <- "" }
+if(length(all_data$infra_name) == 0){ all_data$infra_name <- "" }
+if(length(all_data$cultivar) == 0){ all_data$cultivar <- "" }
+
 # check out column names
 sort(colnames(all_data))
 ### IF NEEDED, SEPARATE SINGLE COLUMN INTO MULTIPLE...
@@ -297,10 +305,10 @@ sort(colnames(all_data))
 # in the data file:
 #unique(all_data$filename[all_data$locality.1 != ""])
 # or you can simply merge similar columns like so (update for you!!)...
-#all_data <- tidyr::unite(all_data,"cultivar",
-#                         c("cultivar","cultivsr"), sep="; ", remove=T, na.rm=T)
-#all_data <- tidyr::unite(all_data,"genus", 
-#                         c("genus","gensu"), sep="; ", remove=T, na.rm=T)
+all_data <- tidyr::unite(all_data,"garden_loc",
+                         c("Current.Condition...Location","garden_loc"), sep="; ", remove=T, na.rm=T)
+all_data <- tidyr::unite(all_data,"germ_type", 
+                         c("germ_type","Type.of.material.representing.an.accession..example.categories..Seed..Plant..Explant..Pollen."), sep="; ", remove=T, na.rm=T)
 #all_data <- tidyr::unite(all_data,"hybrid", c("hybrid","hyrbid"),
 #                         sep="; ", remove=T, na.rm=T)
 #all_data <- tidyr::unite(all_data,"notes", 
@@ -311,8 +319,8 @@ keep_col <- c("acc_num","assoc_sp",#"author",
               "coll_name","coll_num","coll_year",#"condition",
               "country","county","cultivar",#"dataset_year",
               "filename","garden_loc","genus","germ_type",#"habitat",
-              "hybrid","infra_name","infra_rank","inst_short","lin_num",
-              "locality","municipality","notes","num_indiv","orig_lat",
+              "inst_short",#"lin_num", #"hybrid", #"infra_name","infra_rank",
+              "locality","municipality","num_indiv","orig_lat", #"notes"
               "orig_long","orig_source",#"private",
               "prov_type","rec_as","species","state","submission_year",
               "taxon_full_name","taxon_verif"#,"trade_name"
@@ -451,7 +459,7 @@ nrow(all_data)
 #   rename to "Wiews-Exsitu.csv"
 
 # read in data
-wiews <- read.csv(file.path(main_dir, exsitu_dir, raw_exsitu, "Wiews_Exsitu.csv"))
+wiews <- read.csv(file.path(main_dir, exsitu_dir, raw_exsitu, "Wiews-Exsitu.csv"))
 str(wiews)
 
 # filter out Genesys data
@@ -517,6 +525,7 @@ all_data2 <- all_data2 %>% filter(genus %in% target_genera)
 nrow(all_data); nrow(all_data2)
 
 ### CHECK OUT THE HYBRID COLUMN...
+# error is fine if you don't have hybrids. 
 sort(unique(all_data2$hybrid))
 ## NOTE that this is only really necessary if you have a hybrid in your target
 #   taxa list. If you don't, all you need to do is make sure there is nothing
@@ -535,6 +544,7 @@ sort(unique(all_data2$hybrid))
 
 # create concatenated taxon_full_name column
 all_data2 <- tidyr::unite(all_data2, "taxon_full_name_concat",
+                          #add hybrid to this list if you have a hybrid column
                           c(genus,hybrid,species,infra_rank,infra_name,cultivar), sep=" ", remove=F,
                           na.rm=T)
 
